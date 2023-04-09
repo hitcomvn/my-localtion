@@ -97,3 +97,36 @@ function save_location($location) {
     // Close log file
     fclose($fp);
 }
+function initMap() {
+  // Request user location
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      function(position) {
+        // Success, save location to loggps
+        var location = {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          timestamp: new Date(position.timestamp).toISOString()
+        };
+        save_location(location, "loggps.txt");
+        
+        // Show map with user location
+        var map = new google.maps.Map(document.getElementById("map"), {
+          zoom: 15,
+          center: { lat: location.latitude, lng: location.longitude }
+        });
+        var marker = new google.maps.Marker({
+          position: { lat: location.latitude, lng: location.longitude },
+          map: map
+        });
+      },
+      function() {
+        // Error, could not get user location
+        alert("Could not get your location. Please enable location services in your browser.");
+      }
+    );
+  } else {
+    // Error, geolocation not supported by browser
+    alert("Your browser does not support location services.");
+  }
+}
