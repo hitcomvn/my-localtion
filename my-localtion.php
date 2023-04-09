@@ -62,7 +62,7 @@ function my_location_get_user_location() {
     );
 }
 
-function my_location_save_to_log( $location ) {
+function my_location_save_to_log1( $location ) {
     $log_path = plugin_dir_path( __FILE__ ) . 'my-location.log';
 
     $log_data = '[' . date( 'Y-m-d H:i:s' ) . ']';
@@ -74,6 +74,21 @@ function my_location_save_to_log( $location ) {
 
     file_put_contents( $log_path, $log_data, FILE_APPEND | LOCK_EX );
 }
+
+if ( !function_exists('my_location_save_to_log') ) {
+    function my_location_save_to_log( $data ) {
+        // Open the log file for writing
+        $file = fopen( plugin_dir_path( __FILE__ ) . 'my-location.log', 'a' );
+
+        // Write the data to the log file
+        fwrite( $file, $data . "\n" );
+
+        // Close the log file
+        fclose( $file );
+    }
+}
+
+
 /**
  * Save user location meta box data
  *
