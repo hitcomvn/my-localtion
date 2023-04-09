@@ -84,12 +84,29 @@ function my_location_save_user_location( $user_id, $location_data ) {
 /**
  * Display user's location on the website
  *
- * @param boolean $use_geo_html_5 Whether or not to use geo HTML 5.
+ * @param bool $use_geo_html_5 Whether or not to use geo HTML 5.
  */
 function my_location_display_user_location( $use_geo_html_5 = true ) {
-    $latitude = '';
+    $latitude  = '';
     $longitude = '';
-    $address = '';
-    $source = '';
+    $address   = '';
+    $source    = '';
 
-    if
+    if ( is_user_logged_in() ) {
+        $user_id   = get_current_user_id();
+        $latitude  = get_user_meta( $user_id, 'my_location_latitude', true );
+        $longitude = get_user_meta( $user_id, 'my_location_longitude', true );
+        $address   = get_user_meta( $user_id, 'my_location_address', true );
+        $source    = get_user_meta( $user_id, 'my_location_source', true );
+    }
+
+    if ( empty( $latitude ) && empty( $longitude ) && $use_geo_html_5 ) {
+        echo '<div id="my-location-message"></div>';
+    }
+
+    if ( ! empty( $latitude ) && ! empty( $longitude ) ) {
+        echo '<div id="my-location-map"></div>';
+        echo '<div id="my-location-address">' . $address . '</div>';
+        echo '<div id="my-location-source">' . $source . '</div>';
+    }
+}
