@@ -92,5 +92,53 @@ function my_location_save_to_log() {
 
     wp_die();
 }
+function my_location_watch_position() {
+    ?>
+    <script>
+    var watchID;
+    var options = {
+        enableHighAccuracy: true,
+        timeout: 5000,
+        maximumAge: 0
+    };
+
+    function success(position) {
+        var lat  = position.coords.latitude;
+        var lng = position.coords.longitude;
+
+        // Only update the location if the user has consented to share it
+        if (get_user_meta(get_current_user_id(), 'my_location_consent', true) == 'true') {
+            var log_data = {
+                timestamp: new Date(),
+                lat: lat,
+                lng: lng,
+                ip: '<?php echo $_SERVER['REMOTE_ADDR']; ?>'
+            };
+
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', '<?php echo admin_url('admin-ajax.php'); ?>');
+            xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+            xhr.onload = function() {
+                if (xhr.status === 200) {
+                    console.log(xhr.responseText);
+                }
+            };
+            xhr.send('action=my_location_save_to_log&log_data=' + JSON.stringify(log_data));
+        }
+
+        // Update the user meta with the new location
+        update_user_meta(get_current_user_id(), 'my_location_lat', lat);
+        update_user_meta(get_current_user_id(), 'my_location_lng', lng);
+    };
+
+    function error(err) {
+        console.warn('ERROR(' + err.code + '): ' + err.message);
+    };
+
+    watchID = navigator.geolocation.watchPosition(success, error, options);
+    </script>
+    <?php
+}
+add_action('wp_footer', 'my_location_watch_position');
 
 ?>
