@@ -1,18 +1,12 @@
 <?php
 /*
-Plugin Name: My Location
+Plugin Name: Map Location
 Description: Get user location using HTML5 Geolocation and Google Maps API
 Version: 1.0
 */
 
 // Require user to share location to access website
-function require_location() {
-  if(!isset($_COOKIE['user_location'])) { // Check if user location cookie exists
-    setcookie('user_location', 'required', time() + (86400 * 30), '/'); // Set user location cookie for 30 days
-    echo '<script>alert("WEBSITE CHIA SẺ NHẬT KÝ CỦA CON.");</script>'; // Alert user to share location
-  }
-}
-add_action('wp_head', 'require_location');
+
 function require_location() {
   if(!isset($_COOKIE['user_location'])) { // Check if user location cookie exists
     setcookie('user_location', 'required', time() + (86400 * 30), '/'); // Set user location cookie for 30 days
