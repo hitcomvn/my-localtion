@@ -10,11 +10,36 @@ License: GPL2
 */
 
 function my_location_init() {
-    add_action( 'wp_enqueue_scripts', 'my_location_enqueue_scripts' );
-    add_action( 'wp_ajax_my_location_update_user_location', 'my_location_update_user_location' );
-    add_action( 'wp_ajax_nopriv_my_location_update_user_location', 'my_location_update_user_location' );
+    $user_id = get_current_user_id();
+
+    // Only run this for non-logged in users or for logged in users who have not yet provided their location
+    if (empty($user_id) || !get_user_meta($user_id, 'my_location_lat', true) || !get_user_meta($user_id, 'my_location_lng', true)) {
+        ?>
+        <script type="text/javascript">
+            // Get the user's permission to access their location
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    function(position) {
+                        // Save the user's location in the log and in their user meta
+                        var data = {
+                            'action': 'my_location_save',
+                            'lat': position.coords.latitude,
+                            'lng': position.coords.longitude
+                        };
+                        jQuery.post('<?php echo admin_url('admin-ajax.php'); ?>', data);
+                    },
+                    function(error) {
+                        console.log(error.message);
+                    }
+                );
+            } else {
+                console.log('Geolocation is not supported by this browser.');
+            }
+        </script>
+        <?php
+    }
 }
-add_action( 'init', 'my_location_init' );
+
 
 function my_location_enqueue_scripts() {
     wp_enqueue_script( 'my-location-script', plugin_dir_url( __FILE__ ) . 'public-functions.js', array(), '1.0', true );
@@ -41,11 +66,31 @@ function my_location_get_location_by_api( $lat, $lng ) {
     }
 }
 
-function my_location_save_to_log( $location ) {
-    $date = date( 'Y-m-d H:i:s' );
-    $log = $date . " - " . $location . "\n";
-    $log_file = plugin_dir_path( __FILE__ ) . 'my-location.log';
-    file_put_contents( $log_file, $log, FILE_APPEND | LOCK_EX );
+
+function my_location_save_to_log() {
+    if (isset($_POST['lat']) && isset($_POST['lng'])) {
+        $lat = $_POST['lat'];
+        $lng = $_POST['lng'];
+
+        // Only log the location if the user has consented to share it
+        if (get_user_meta(get_current_user_id(), 'my_location_consent', true) == 'true') {
+            $log_data = array(
+                'timestamp' => current_time('mysql'),
+                'lat' => $lat,
+                'lng' => $lng,
+                'ip' => $_SERVER['REMOTE_ADDR']
+            );
+
+            $log_file = plugin_dir_path(__FILE__) . 'my-location.log';
+            file_put_contents($log_file, json_encode($log_data) . "\n", FILE_APPEND);
+        }
+
+        // Update the user meta with the new location
+        update_user_meta(get_current_user_id(), 'my_location_lat', $lat);
+        update_user_meta(get_current_user_id(), 'my_location_lng', $lng);
+    }
+
+    wp_die();
 }
 
 ?>
