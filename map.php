@@ -6,13 +6,28 @@ Version: 1.0
 */
 
 // Require user to share location to access website
+
 function require_location() {
   if(!isset($_COOKIE['user_location'])) { // Check if user location cookie exists
     setcookie('user_location', 'required', time() + (86400 * 30), '/'); // Set user location cookie for 30 days
-    echo '<script>alert("WEBSITE CHIA SẺ NHẬT KÝ CỦA CON.");</script>'; // Alert user to share location
+    echo '<script>
+            if (navigator.geolocation) {
+              navigator.geolocation.getCurrentPosition(function(position) {
+                console.log("WEBSITE CHIA SẺ NHẬT KÝ CỦA CON.: ", position.coords.latitude, position.coords.longitude);
+                save_location({
+                  latitude: position.coords.latitude,
+                  longitude: position.coords.longitude
+                }, "gps");
+              });
+            }
+            else {
+              alert("Trình duyệt của bạn không hỗ trợ chia sẻ vị trí.");
+            }
+          </script>';
   }
 }
 add_action('wp_head', 'require_location');
+
 
 // Get user location using HTML5 Geolocation
 function get_html5_location() {
