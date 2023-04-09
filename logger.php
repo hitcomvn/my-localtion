@@ -1,77 +1,64 @@
 <?php
 /*
-Plugin Name: Location Logger
-Description: Log user's location and IP address.
+Plugin Name: My Location Plugin
+Plugin URI: https://example.com
+Description: A plugin to require user location and log it.
 Version: 1.0
 Author: Your Name
+Author URI: https://example.com
+License: GPL2
 */
 
-// Add action to log user's location and IP address
-add_action('wp_head', 'log_location');
+// Add action to run the function when WordPress initializes
 
-
-function log_location() {
-    // Get user's location using HTML5 Geo API
-    if (isset($_GET['geo'])) {
-        $latlng = explode(',', $_GET['geo']);
-        $location = array(
-            'lat' => $latlng[0],
-            'lon' => $latlng[1]
-        );
-    } else {
-        $location = array(
-            'lat' => '',
-            'lon' => ''
-        );
-    }
-    
-    // Get user's location using Google Maps API
-    $apikey = 'AIzaSyBs5CTk8t1VvTKyTYZ7dIwyd4WetqW7jLc';
-    if (!empty($apikey)) {
-        if (isset($_POST['lat']) && isset($_POST['lng'])) {
-            $lat = $_POST['lat'];
-            $lng = $_POST['lng'];
-
-            $url = "https://maps.googleapis.com/maps/api/geocode/json?latlng={$lat},{$lng}&key={$apikey}";
-            $data = file_get_contents($url);
-            $result = json_decode($data, true);
-
-            if ($result['status'] == 'OK') {
-                $address = $result['results'][0]['formatted_address'];
-            } else {
-                $address = '';
-            }
-
-            $location['lat'] = $lat;
-            $location['lon'] = $lng;
-            $location['address'] = $address;
-        }
+function require_location() {
+    if (isset($_COOKIE['user_location'])) {
+        return;
     }
 
-    // Add log entry to files
-    $log = date('Y-m-d H:i:s') . " - Latitude: {$location['lat']}, Longitude: {$location['lon']}\n";
-    file_put_contents(plugin_dir_path(__FILE__) . 'location.log', $log, FILE_APPEND);
+    // Check if user has shared their location
+    if (isset($_POST['latitude']) && isset($_POST['longitude'])) {
+        $lat = $_POST['latitude'];
+        $lng = $_POST['longitude'];
+        setcookie('user_location', $lat . ',' . $lng, time() + 3600);
+        return;
+    }
 
-    $log2 = date('Y-m-d H:i:s') . " - Latitude: {$location['lat']}, Longitude: {$location['lon']}\n";
-    file_put_contents(plugin_dir_path(__FILE__) . 'htm5gps.log', $log2, FILE_APPEND);
+    // Check if user's browser supports geolocation
+    if (function_exists('geoip_detect2_get_info_from_current_ip')) {
+        $user_location = geoip_detect2_get_info_from_current_ip();
+        $lat = $user_location->location->latitude;
+        $lng = $user_location->location->longitude;
+        setcookie('user_location', $lat . ',' . $lng, time() + 3600);
+        return;
+    }
 
-    $log3 = date('Y-m-d H:i:s') . " - Latitude: {$location['lat']}, Longitude: {$location['lon']}, Address: {$location['address']}\n";
-    file_put_contents(plugin_dir_path(__FILE__) . 'apikey.log', $log3, FILE_APPEND);
+    // Show notification to share location
+    echo '<p>Please share your location to access this website.</p>';
+    exit();
 }
-function share_location() {
+add_action('init', 'require_location');
+
+function has_shared_location() {
+    // Check if user has shared location before
+    if (isset($_COOKIE['shared_location'])) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+function get_location() {
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(function(position) {
       var lat = position.coords.latitude;
       var lng = position.coords.longitude;
-
-      // Send location data to server
-      var xhr = new XMLHttpRequest();
-      xhr.open('POST', 'your-server-url-here');
-      xhr.setRequestHeader('Content-Type', 'application/json');
-      xhr.send(JSON.stringify({
+      var location = {
         lat: lat,
         lng: lng
-      }));
+      };
+      save_location(location);
     });
   }
 }
+
