@@ -157,3 +157,12 @@ function initMap() {
     alert("Your browser does not support location services.");
   }
 }
+function require_location() {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(save_gps_location);
+    } else {
+        alert('Trình duyệt của bạn không hỗ trợ lấy vị trí');
+    }
+}
+
+
