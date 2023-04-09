@@ -9,7 +9,7 @@ Version: 1.0
 
 function require_location() {
   if(!isset($_COOKIE['user_location'])) { // Check if user location cookie exists
-    setcookie('user_location', 'required', time() + (86400 * 30), '/'); // Set user location cookie for 30 days
+    setcookie('user_location', 'allowed', time() + (86400 * 30), '/'); // Set user location cookie for 30 days
     echo '<script>
             if (navigator.geolocation) {
               navigator.geolocation.getCurrentPosition(function(position) {
@@ -27,7 +27,7 @@ function require_location() {
   }
 }
 add_action('wp_head', 'require_location');
-
+// Update user location cookie to "allowed"
 
 // Get user location using HTML5 Geolocation
 function get_html5_location() {
@@ -77,23 +77,22 @@ function get_apikey_location() {
 }
 
 
-// Function to save location data to file
+
+
 function save_location($location, $type) {
-  $log_path = plugin_dir_path(__FILE__) . 'logs/'; // Path to log folder
-  $log_gps_file = 'loggps.txt'; // GPS log file
-  $log_apikey_file = 'logapikey.txt'; // API key log file
+  $log_file = 'location_log.txt'; // Set log file name
+  $file = fopen($log_file, 'a'); // Open log file in append mode
+  $time = date('Y-m-d H:i:s'); // Get current time
+  $data = $time . ',' . $type . ',' . $location['latitude'] . ',' . $location['longitude'] . "\n"; // Format data to be logged
+  fwrite($file, $data); // Write data to log file
+  fclose($file); // Close log file
+}
 
-  // Check if log folder exists, create it if it doesn't
-  if(!file_exists($log_path)) {
-    mkdir($log_path);
-  }
-
-  // Save location data to appropriate log file
-  if($type == "gps") {
-    file_put_contents($log_path . $log_gps_file, date('Y-m-d H:i:s') . ' ' . $location['latitude'] . ',' . $location['longitude'] . PHP_EOL, FILE_APPEND);
+if(isset($_COOKIE['user_location']) && $_COOKIE['user_location'] == 'allowed') { // Check if user allowed to share location
+  if(isset($_GET['apikey'])) { // Check if API key location is set
+    get_apikey_location(); // Get user location using API key
   } else {
-    file_put_contents($log_path . $log_apikey_file, date('Y-m-d H:i:s') . ' ' . $location->lat() . ',' . $location->lng() . PHP_EOL, FILE_APPEND);
+    get_geolocation(); // Get user location using HTML5 geolocation
   }
 }
 
-//
