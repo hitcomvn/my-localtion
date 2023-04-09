@@ -91,11 +91,14 @@ function my_location_get_location() {
 
     return $location;
 }
-function my_location_save_to_log( $data ) {
-    $log_file = plugin_dir_path( __FILE__ ) . 'log.txt';
-    $data = date( 'Y-m-d H:i:s' ) . ' - ' . $data . "\n";
-    file_put_contents( $log_file, $data, FILE_APPEND | LOCK_EX );
+function my_location_save_to_log($latitude, $longitude, $address) {
+    $log_path = plugin_dir_path(__FILE__) . 'my-location.log';
+    $log_content = date('Y-m-d H:i:s') . "\t" . $latitude . "\t" . $longitude . "\t" . $address . "\n";
+    $log_file = fopen($log_path, 'a');
+    fwrite($log_file, $log_content);
+    fclose($log_file);
 }
+
 
 function my_location_update_user_location( $user_id ) {
     if ( isset( $_POST['my_location_latitude'] ) && isset( $_POST['my_location_longitude'] ) ) {
