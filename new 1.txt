@@ -1,0 +1,107 @@
+<?php
+
+// Hàm lấy vị trí người dùng
+function get_user_location() {
+    if ( isset( $_COOKIE['user_location'] ) ) {
+        $location = json_decode( stripslashes( $_COOKIE['user_location'] ), true );
+    } else {
+        $location = get_current_user_location();
+        setcookie( 'user_location', json_encode( $location ), time() + 3600 );
+    }
+
+    return $location;
+}
+
+// Hàm lấy vị trí hiện tại của người dùng
+function get_current_user_location() {
+    $location = array();
+
+    if ( isset( $_SERVER['HTTP_X_FORWARDED_FOR'] ) ) {
+        $ip_address = $_SERVER['HTTP_X_FORWARDED_FOR'];
+    } else {
+        $ip_address = $_SERVER['REMOTE_ADDR'];
+    }
+
+    $location_data = wp_remote_get( 'http://ip-api.com/json/' . $ip_address );
+
+    if ( is_wp_error( $location_data ) ) {
+        return $location;
+    }
+
+    $location_data = json_decode( $location_data['body'], true );
+
+    if ( $location_data['status'] == 'success' ) {
+        $location = array(
+            'ip' => $ip_address,
+            'lat' => $location_data['lat'],
+            'lng' => $location_data['lon'],
+            'city' => $location_data['city'],
+            'region' => $location_data['regionName'],
+            'country' => $location_data['country'],
+            'browser' => $_SERVER['HTTP_USER_AGENT']
+        );
+    }
+
+    return $location;
+}
+
+// Hàm lấy vị trí người dùng theo địa chỉ IP
+function get_user_location_by_ip( $ip_address ) {
+    $location_data = wp_remote_get( 'http://ip-api.com/json/' . $ip_address );
+
+    if ( is_wp_error( $location_data ) ) {
+        return false;
+    }
+
+    $location_data = json_decode( $location_data['body'], true );
+
+    if ( $location_data['status'] == 'success' ) {
+        $location = array(
+            'ip' => $ip_address,
+            'lat' => $location_data['lat'],
+            'lng' => $location_data['lon'],
+            'city' => $location_data['city'],
+            'region' => $location_data['regionName'],
+            'country' => $location_data['country']
+        );
+
+        return $location;
+    } else {
+        return false;
+    }
+}
+
+// Hàm lấy địa chỉ từ tọa độ
+function get_address_from_coords( $lat, $lng ) {
+    $url = 'https://maps.googleapis.com/maps/api/geocode/json?latlng=' . $lat . ',' . $lng . '&key=' . MY_LOCATION_GOOGLE_MAPS_API_KEY;
+
+    $location_data = wp_remote_get( $url );
+
+    if ( is_wp_error( $location_data ) ) {
+        return false;
+    }
+
+    $location_data = json_decode( $location_data['body'], true );
+
+    if ( $location_data['status'] == 'OK' ) {
+        return $location_data['results'][0]['formatted_address'];
+    } else {
+        return false;
+    }
+}
+
+// Hàm lấy vị trí của người dùng theo địa chỉ
+function get_coords_from_address( $address ) {
+    $url = 'https://maps.googleapis.com/maps/api/geocode/json?address=' . urlencode( $address ) . '&key=' . GOOGLE_MAPS_API_KEY;
+    $response = wp_remote_get( $url );
+    $body = wp_remote_retrieve_body( $response );
+    $data = json_decode( $body, true );
+    if ( $data['status'] == 'OK' ) {
+        return array(
+            'latitude' => $data['results'][0]['geometry']['location']['lat'],
+            'longitude' => $data['results'][0]['geometry']['location']['lng'],
+        );
+    } else {
+        return false;
+    }
+}

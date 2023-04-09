@@ -1,0 +1,45 @@
+/* Header styles */
+.my-location-header {
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 20px;
+}
+
+/* Form styles */
+.my-location-form label {
+  display: block;
+  margin-bottom: 10px;
+  font-weight: bold;
+}
+
+.my-location-form input[type="text"],
+.my-location-form input[type="number"],
+.my-location-form select {
+  width: 100%;
+  padding: 5px;
+  margin-bottom: 10px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+}
+
+.my-location-form select {
+  height: 30px;
+}
+
+/* Button styles */
+.my-location-button {
+  display: inline-block;
+  padding: 5px 10px;
+  font-size: 16px;
+  font-weight: bold;
+  color: #fff;
+  background-color: #0073aa;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.my-location-button:hover {
+  background-color: #005d87;
+}
