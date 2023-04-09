@@ -1,110 +1,78 @@
 <?php
 /**
  * Plugin Name: My Location
- * Plugin URI: https://www.example.com/my-location
- * Description: A simple plugin to get and display user's location on the website.
- * Version: 1.0
+ * Description: A simple plugin to get user location and save to log file.
+ * Version: 1.0.0
  * Author: Your Name
- * Author URI: https://www.example.com
+ * Author URI: https://yourwebsite.com/
  */
 
-/**
- * Define constants
- */
-define( 'MY_LOCATION_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
-define( 'MY_LOCATION_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
-
-/**
- * Include required files
- */
-require_once MY_LOCATION_PLUGIN_DIR . 'public-functions.php';
-
-/**
- * Register activation hook
- */
-register_activation_hook( __FILE__, 'my_location_activate' );
-
-/**
- * Register deactivation hook
- */
-register_deactivation_hook( __FILE__, 'my_location_deactivate' );
-
-/**
- * Register uninstall hook
- */
-register_uninstall_hook( __FILE__, 'my_location_uninstall' );
-
-/**
- * Run activation function
- */
-function my_location_activate() {
-    my_location_create_tables();
-}
-
-/**
- * Run deactivation function
- */
-function my_location_deactivate() {
-    // No action needed
-}
-
-/**
- * Run uninstall function
- */
-function my_location_uninstall() {
-    my_location_drop_tables();
-}
-
-/**
- * Enqueue scripts and styles on frontend
- */
-function my_location_enqueue_scripts() {
-    wp_enqueue_script( 'my-location', MY_LOCATION_PLUGIN_URL . 'js/my-location.js', array( 'jquery' ), '1.0', true );
-}
-add_action( 'wp_enqueue_scripts', 'my_location_enqueue_scripts' );
-
-/**
- * Display user's location on the website
- *
- * @param boolean $use_geo_html_5 Whether or not to use geo HTML 5.
- */
-function my_location_display_user_location( $use_geo_html_5 = true ) {
+function my_location_get_user_location() {
     $latitude = '';
     $longitude = '';
     $address = '';
-    $source = '';
 
-    if ( is_user_logged_in() ) {
-        $user_id = get_current_user_id();
-        $latitude = get_user_meta( $user_id, 'my_location_latitude', true );
-        $longitude = get_user_meta( $user_id, 'my_location_longitude', true );
-        $address = get_user_meta( $user_id, 'my_location_address', true );
-        $source = 'User\'s account';
-    } elseif ( $use_geo_html_5 && ! empty( $_COOKIE['my_location_latitude'] ) && ! empty( $_COOKIE['my_location_longitude'] ) ) {
+    // Try to get user's location using HTML5 geolocation API
+    if ( isset( $_COOKIE['my_location_latitude'] ) && isset( $_COOKIE['my_location_longitude'] ) ) {
+        // Use latitude and longitude from cookie if available
         $latitude = $_COOKIE['my_location_latitude'];
         $longitude = $_COOKIE['my_location_longitude'];
-        $address = my_location_get_address_by_lat_long( $latitude, $longitude );
-        $source = 'HTML 5 Geolocation';
     } else {
-        $ip = my_location_get_ip_address();
-        $location = my_location_get_location_by_ip( $ip );
-        $latitude = $location['latitude'];
-        $longitude = $location['longitude'];
-        $address = $location['address'];
-        $source = 'IP Address';
+        // Use HTML5 geolocation API to get user's location
+        $geo_options = array(
+            'timeout' => 10
+        );
+        $position = wp_remote_get( 'https://www.googleapis.com/geolocation/v1/geolocate?key=' . MY_LOCATION_GOOGLE_MAPS_API_KEY, array(
+            'method'      => 'POST',
+            'timeout'     => 10,
+            'redirection' => 5,
+            'httpversion' => '1.0',
+            'headers'     => array(),
+            'body'        => '',
+            'cookies'     => array()
+        ) );
+
+        if ( ! is_wp_error( $position ) && $position['response']['code'] == 200 ) {
+            $location = json_decode( $position['body'] );
+            $latitude = $location->location->lat;
+            $longitude = $location->location->lng;
+        }
     }
 
-    // Output location information
-    echo '<div class="my-location">';
-    echo '<h3>Your Location</h3>';
-    echo '<ul>';
-    echo '<li><strong>Latitude:</strong> ' . $latitude . '</li>';
-    echo '<li><strong>Longitude:</strong> ' . $longitude . '</li>';
-    echo '<li><strong>Address:</strong> ' . $address . '</li>';
-    echo '<li><strong>Source:</strong> ' . $source . '</li>';
-    echo '</ul>';
-    echo '</div>';
+    // Use Google Maps API to get address from latitude and longitude
+    if ( ! empty( $latitude ) && ! empty( $longitude ) ) {
+        $geocode_url = 'https://maps.googleapis.com/maps/api/geocode/json?key=' . MY_LOCATION_GOOGLE_MAPS_API_KEY . '&latlng=' . $latitude . ',' . $longitude . '&sensor=false';
+
+        $response = wp_remote_get( $geocode_url, array(
+            'timeout' => 10
+        ) );
+
+        if ( ! is_wp_error( $response ) && $response['response']['code'] == 200 ) {
+            $geocode = json_decode( $response['body'] );
+            if ( $geocode->status == 'OK' ) {
+                $address = $geocode->results[0]->formatted_address;
+            }
+        }
+    }
+
+    return array(
+        'latitude' => $latitude,
+        'longitude' => $longitude,
+        'address' => $address
+    );
 }
 
-/**
- * AJAX callback
+function my_location_save_to_log( $location ) {
+    $log_path = plugin_dir_path( __FILE__ ) . 'my-location.log';
+
+    $log_data = '[' . date( 'Y-m-d H:i:s' ) . ']';
+    $log_data .= ' IP Address: ' . $_SERVER['REMOTE_ADDR'];
+    $log_data .= ' Latitude: ' . $location['latitude'];
+    $log_data .= ' Longitude: ' . $location['longitude'];
+    $log_data .= ' Address: ' . $location['address'];
+    $log_data .= "\n";
+
+    file_put_contents( $log_path, $log_data, FILE_APPEND | LOCK_EX );
+}
+
+function my_location_init
